@@ -93,6 +93,45 @@ app.get('/images', async (req, res) => {
     }
 });
 
+app.get('/day',async (req, res) => {
+    try{
+        //setting the database
+        const connection = await mysql.createConnection(dbConfig);
+
+        const query = `
+            SELECT image_id, image_data, image_datetime, image_width, image_height
+            FROM Images
+            WHERE image_dateTime = ?
+            ORDER BY image_datetime
+        `
+        const [rows] = await connection.execute(query, req.params.date)
+
+        await connection.end();
+
+
+        // Transform the image data (convert BLOB to base64)
+        const images = rows.map((row) => ({
+            id: row.image_id, // Ensure the correct ID field is used
+            image: Buffer.from(row.image_data).toString('base64'),
+            datetime: row.image_datetime,
+            width: row.image_width,
+            height: row.image_height,
+        }));
+
+
+        // const [rows] = await connection.execute(`
+        //     SELECT image_id, image_data, image_datetime, image_width, image_height
+        //     FROM Images
+        //     WHERE image_dateTime =
+        //     ORDER BY image_datetime
+        // `);
+
+    } catch(error) {
+        console.error('Error fetching images:', error);
+        res.status(500).json({ message: 'Error fetching images', error });
+    }
+});
+
 // Route to delete an image by ID
 app.delete('/images/:id', async (req, res) => {
     const { id } = req.params;
@@ -118,6 +157,8 @@ app.delete('/images/:id', async (req, res) => {
         console.error('Error deleting image:', error);
         res.status(500).json({ message: 'Error deleting image', error });
     }
+
+
 });
 
 // Start the Express server

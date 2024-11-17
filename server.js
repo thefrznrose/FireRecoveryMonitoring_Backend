@@ -78,32 +78,71 @@ app.post('/upload', upload.single('image'), async (req, res) => {
 
 
 
-// Route to fetch all images
+// // Route to fetch all images
+// app.get('/images', async (req, res) => {
+//     try {
+//         // Connect to MySQL
+//         const connection = await mysql.createConnection(dbConfig);
+
+//         // Fetch all image records from the Images table
+//         const [rows] = await connection.execute(`
+//             SELECT image_id, image_data, image_datetime, image_width, image_height, image_location
+//             FROM Images
+//         `);
+
+
+//         await connection.end();
+
+//         // Transform the image data (convert BLOB to base64)
+//         const images = rows.map((row) => ({
+//             id: row.image_id,
+//             image: Buffer.from(row.image_data).toString('base64'),
+//             datetime: row.image_datetime,
+//             width: row.image_width,
+//             height: row.image_height,
+//             location: row.image_location, // Include location in the response
+//         }));
+        
+//         // Respond with the image array
+//         res.status(200).json(images);
+//     } catch (error) {
+//         console.error('Error fetching images:', error);
+//         res.status(500).json({ message: 'Error fetching images', error });
+//     }
+// });
+
+
+const sharp = require('sharp');
+
 app.get('/images', async (req, res) => {
     try {
-        // Connect to MySQL
         const connection = await mysql.createConnection(dbConfig);
-
-        // Fetch all image records from the Images table
         const [rows] = await connection.execute(`
-            SELECT image_id, image_data, image_datetime, image_width, image_height, image_location
+            SELECT image_id, image_data, image_datetime, image_width, image_height, image_location 
             FROM Images
         `);
 
-
         await connection.end();
 
-        // Transform the image data (convert BLOB to base64)
-        const images = rows.map((row) => ({
-            id: row.image_id,
-            image: Buffer.from(row.image_data).toString('base64'),
-            datetime: row.image_datetime,
-            width: row.image_width,
-            height: row.image_height,
-            location: row.image_location, // Include location in the response
-        }));
-        
-        // Respond with the image array
+        // Transform image data (resize/compress)
+        const images = await Promise.all(
+            rows.map(async (row) => {
+                const resizedImageBuffer = await sharp(row.image_data)
+                    // .resize({ width: 300 }) // Resize to a smaller width
+                    .jpeg({ quality: 40 }) // Compress to 60% quality
+                    .toBuffer();
+
+                return {
+                    id: row.image_id,
+                    image: resizedImageBuffer.toString('base64'),
+                    datetime: row.image_datetime,
+                    width: row.image_width,
+                    height: row.image_height,
+                    location: row.image_location,
+                };
+            })
+        );
+
         res.status(200).json(images);
     } catch (error) {
         console.error('Error fetching images:', error);

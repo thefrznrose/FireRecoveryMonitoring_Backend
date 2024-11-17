@@ -25,6 +25,8 @@ const dbConfig = {
 // Multer configuration for handling file uploads (image stored in memory)
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
+const port = process.env.PORT || 3000; // Default to 3000 for local testing
+
 
 // Route to handle image upload
 app.post('/upload', upload.single('image'), async (req, res) => {

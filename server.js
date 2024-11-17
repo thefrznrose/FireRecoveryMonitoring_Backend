@@ -89,6 +89,7 @@ app.get('/images', async (req, res) => {
             FROM Images
         `);
 
+
         await connection.end();
 
         // Transform the image data (convert BLOB to base64)
@@ -98,9 +99,9 @@ app.get('/images', async (req, res) => {
             datetime: row.image_datetime,
             width: row.image_width,
             height: row.image_height,
-            location: row.location, // Include location in the response
+            location: row.image_location, // Include location in the response
         }));
-
+        
         // Respond with the image array
         res.status(200).json(images);
     } catch (error) {

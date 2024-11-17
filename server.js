@@ -8,7 +8,8 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 const cors = require('cors');
-app.use(cors()); // Allow requests from any origin
+app.use(cors({ origin: '*' })); // Allow all origins
+
 
 // MySQL connection details from environment variables
 const dbConfig = {

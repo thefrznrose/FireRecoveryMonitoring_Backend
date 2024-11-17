@@ -1,14 +1,14 @@
 const express = require('express');
 const mysql = require('mysql2/promise');
 const multer = require('multer');
-
+const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
-const port = process.env.PORT || 5000;
+app.use(cors({ origin: '*' })); // Enable CORS
+app.use(express.json()); // For parsing application/json
+app.use(express.urlencoded({ extended: true }));
 
-const cors = require('cors');
-app.use(cors({ origin: '*' })); // Allow all origins
 
 
 // MySQL connection details from environment variables
@@ -143,3 +143,5 @@ app.delete('/images/:id', async (req, res) => {
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });
+
+module.exports = app;

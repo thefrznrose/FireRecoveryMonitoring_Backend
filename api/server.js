@@ -6,9 +6,6 @@ require('dotenv').config();
 
 const app = express();
 
-
-
-
 app.use(express.json()); // For parsing application/json
 app.use(express.urlencoded({ extended: true }));
 
@@ -21,7 +18,7 @@ app.get('/', (req, res) => {
 
 // app.use(
 //     cors({
-//         origin: [
+//         Ac: [
 //             'http://localhost:3000',
 //             'http://localhost:3001', 
 //             'https://fire-recovery-monitoring.vercel.app'],

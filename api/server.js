@@ -67,6 +67,9 @@ const upload = multer({ storage: storage });
 const port = process.env.PORT || 3000; // Default to 3000 for local testing
 
 
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
 // Route to handle image upload
 app.post('/upload', upload.single('image'), async (req, res) => {
     const file = req.file;

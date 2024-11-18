@@ -1,7 +1,7 @@
 const express = require('express');
 const mysql = require('mysql2/promise');
 const multer = require('multer');
-// wconst cors = require('cors');
+const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
@@ -12,18 +12,23 @@ const app = express();
 app.use(express.json()); // For parsing application/json
 app.use(express.urlencoded({ extended: true }));
 
-const cors = require('cors');
+app.use(cors());
 
-app.use(
-    cors({
-        origin: [
-            'http://localhost:3000',
-            'http://localhost:3001', 
-            'https://fire-recovery-monitoring.vercel.app'],
-        methods: ['GET', 'POST', 'OPTIONS', 'DELETE'],
-        allowedHeaders: ['Content-Type', 'Authorization'],
-    })
-);
+// sample api routes for testing
+app.get('/', (req, res) => {
+    res.json("welcome to our server")
+});
+
+// app.use(
+//     cors({
+//         Ac: [
+//             'http://localhost:3000',
+//             'http://localhost:3001', 
+//             'https://fire-recovery-monitoring.vercel.app'],
+//         methods: ['GET', 'POST', 'OPTIONS', 'DELETE'],
+//         allowedHeaders: ['Content-Type', 'Authorization'],
+//     })
+// );
 
 // MySQL connection details from environment variables
 const dbConfig = {

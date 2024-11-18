@@ -1,20 +1,29 @@
 const express = require('express');
 const mysql = require('mysql2/promise');
 const multer = require('multer');
-
+// wconst cors = require('cors');
 require('dotenv').config();
 
 const app = express();
-const port = process.env.PORT || 5000;
 
-// const cors = require('cors');
-// app.use(cors({
-//     origin: ['http://localhost:3001', 'http://localhost:3001', 'https://fire-recovery-monitoring-backend.vercel.app'], // Replace with your allowed origins
-//     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Add methods you use
-//     allowedHeaders: ['Content-Type', 'Authorization'], // Add headers you expect
-//     credentials: true, // If you need to send cookies or authorization headers
-// }));
 
+
+
+app.use(express.json()); // For parsing application/json
+app.use(express.urlencoded({ extended: true }));
+
+const cors = require('cors');
+
+app.use(
+    cors({
+        origin: [
+            'http://localhost:3000',
+            'http://localhost:3001', 
+            'https://fire-recovery-monitoring.vercel.app'],
+        methods: ['GET', 'POST', 'OPTIONS', 'DELETE'],
+        allowedHeaders: ['Content-Type', 'Authorization'],
+    })
+);
 
 // MySQL connection details from environment variables
 const dbConfig = {
@@ -25,11 +34,36 @@ const dbConfig = {
     port: process.env.DB_PORT || 3306,
 };
 
+// app.options('*', (req, res) => {
+//     res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+//     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,DELETE');
+//     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+//     res.setHeader('Access-Control-Allow-Credentials', 'true');
+//     res.sendStatus(204); // No content
+// });
+
+
+// app.use((req, res, next) => {
+//     console.log(`Incoming request: ${req.method} ${req.url}`);
+//     res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+//     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,DELETE');
+//     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+//     next();
+//   });
+  
+// app.use((req, res, next) => {
+//     console.log(`Incoming request: ${req.method} ${req.url}`);
+//     console.log(`Headers: ${JSON.stringify(req.headers)}`);
+//     console.log(`Body: ${JSON.stringify(req.body)}`);
+//     next();
+// });
 
 
 // Multer configuration for handling file uploads (image stored in memory)
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
+const port = process.env.PORT || 3000; // Default to 3000 for local testing
+
 
 // Route to handle image upload
 app.post('/upload', upload.single('image'), async (req, res) => {
@@ -83,71 +117,32 @@ app.post('/upload', upload.single('image'), async (req, res) => {
 
 
 
-// // Route to fetch all images
-// app.get('/images', async (req, res) => {
-//     try {
-//         // Connect to MySQL
-//         const connection = await mysql.createConnection(dbConfig);
-
-//         // Fetch all image records from the Images table
-//         const [rows] = await connection.execute(`
-//             SELECT image_id, image_data, image_datetime, image_width, image_height, image_location
-//             FROM Images
-//         `);
-
-
-//         await connection.end();
-
-//         // Transform the image data (convert BLOB to base64)
-//         const images = rows.map((row) => ({
-//             id: row.image_id,
-//             image: Buffer.from(row.image_data).toString('base64'),
-//             datetime: row.image_datetime,
-//             width: row.image_width,
-//             height: row.image_height,
-//             location: row.image_location, // Include location in the response
-//         }));
-        
-//         // Respond with the image array
-//         res.status(200).json(images);
-//     } catch (error) {
-//         console.error('Error fetching images:', error);
-//         res.status(500).json({ message: 'Error fetching images', error });
-//     }
-// });
-
-
-const sharp = require('sharp');
-
+// Route to fetch all images
 app.get('/images', async (req, res) => {
     try {
+        // Connect to MySQL
         const connection = await mysql.createConnection(dbConfig);
+
+        // Fetch all image records from the Images table
         const [rows] = await connection.execute(`
-            SELECT image_id, image_data, image_datetime, image_width, image_height, image_location 
+            SELECT image_id, image_data, image_datetime, image_width, image_height, image_location
             FROM Images
         `);
 
+
         await connection.end();
 
-        // Transform image data (resize/compress)
-        const images = await Promise.all(
-            rows.map(async (row) => {
-                const resizedImageBuffer = await sharp(row.image_data)
-                    // .resize({ width: 300 }) // Resize to a smaller width
-                    .jpeg({ quality: 40 }) // Compress to 60% quality
-                    .toBuffer();
-
-                return {
-                    id: row.image_id,
-                    image: resizedImageBuffer.toString('base64'),
-                    datetime: row.image_datetime,
-                    width: row.image_width,
-                    height: row.image_height,
-                    location: row.image_location,
-                };
-            })
-        );
-
+        // Transform the image data (convert BLOB to base64)
+        const images = rows.map((row) => ({
+            id: row.image_id,
+            image: Buffer.from(row.image_data).toString('base64'),
+            datetime: row.image_datetime,
+            width: row.image_width,
+            height: row.image_height,
+            location: row.image_location, // Include location in the response
+        }));
+        
+        // Respond with the image array
         res.status(200).json(images);
     } catch (error) {
         console.error('Error fetching images:', error);
@@ -187,3 +182,5 @@ app.delete('/images/:id', async (req, res) => {
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });
+
+module.exports = app;

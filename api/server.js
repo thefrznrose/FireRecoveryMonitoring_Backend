@@ -6,24 +6,24 @@ require('dotenv').config();
 
 const app = express();
 
-// app.use(
-//     cors({
-//         origin: [
-//             'http://localhost:3000',
-//             'http://localhost:3001', 
-//             'https://fire-recovery-monitoring.vercel.app'],
-//         methods: ['GET', 'POST', 'OPTIONS', 'DELETE'],
-//         allowedHeaders: ['Content-Type', 'Authorization'],
-//     })
-// );
 
-  
+
+
 app.use(express.json()); // For parsing application/json
 app.use(express.urlencoded({ extended: true }));
 
 const cors = require('cors');
-app.use(cors({ origin: '*' })); // Adjust origin for production
 
+app.use(
+    cors({
+        origin: [
+            'http://localhost:3000',
+            'http://localhost:3001', 
+            'https://fire-recovery-monitoring.vercel.app'],
+        methods: ['GET', 'POST', 'OPTIONS', 'DELETE'],
+        allowedHeaders: ['Content-Type', 'Authorization'],
+    })
+);
 
 // MySQL connection details from environment variables
 const dbConfig = {

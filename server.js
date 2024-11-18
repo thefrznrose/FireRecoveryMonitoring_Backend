@@ -8,12 +8,12 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 const cors = require('cors');
-app.use(cors({
-    origin: ['http://localhost:3001', 'http://localhost:3001', 'https://fire-recovery-monitoring-backend.vercel.app'], // Replace with your allowed origins
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Add methods you use
-    allowedHeaders: ['Content-Type', 'Authorization'], // Add headers you expect
-    credentials: true, // If you need to send cookies or authorization headers
-}));
+// app.use(cors({
+//     origin: ['http://localhost:3001', 'http://localhost:3001', 'https://fire-recovery-monitoring-backend.vercel.app'], // Replace with your allowed origins
+//     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Add methods you use
+//     allowedHeaders: ['Content-Type', 'Authorization'], // Add headers you expect
+//     credentials: true, // If you need to send cookies or authorization headers
+// }));
 
 
 

@@ -1,7 +1,7 @@
 const express = require('express');
 const mysql = require('mysql2/promise');
 const multer = require('multer');
-const cors = require('cors');
+// const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
@@ -32,29 +32,29 @@ const dbConfig = {
     port: process.env.DB_PORT || 3306,
 };
 
-app.options('*', (req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,DELETE');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.sendStatus(204); // No content
-});
+// app.options('*', (req, res) => {
+//     res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+//     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,DELETE');
+//     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+//     res.setHeader('Access-Control-Allow-Credentials', 'true');
+//     res.sendStatus(204); // No content
+// });
 
 
-app.use((req, res, next) => {
-    console.log(`Incoming request: ${req.method} ${req.url}`);
-    res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,DELETE');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    next();
-  });
+// app.use((req, res, next) => {
+//     console.log(`Incoming request: ${req.method} ${req.url}`);
+//     res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+//     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,DELETE');
+//     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+//     next();
+//   });
   
-app.use((req, res, next) => {
-    console.log(`Incoming request: ${req.method} ${req.url}`);
-    console.log(`Headers: ${JSON.stringify(req.headers)}`);
-    console.log(`Body: ${JSON.stringify(req.body)}`);
-    next();
-});
+// app.use((req, res, next) => {
+//     console.log(`Incoming request: ${req.method} ${req.url}`);
+//     console.log(`Headers: ${JSON.stringify(req.headers)}`);
+//     console.log(`Body: ${JSON.stringify(req.body)}`);
+//     next();
+// });
 
 
 // Multer configuration for handling file uploads (image stored in memory)

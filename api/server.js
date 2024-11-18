@@ -5,7 +5,13 @@ const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
-app.use(cors({ origin: '*' })); // Enable CORS
+app.use(
+    cors({
+      origin: ['http://localhost:3000', 'https://fire-recovery-monitoring.vercel.app'],
+      credentials: true,
+    })
+  );
+  
 app.use(express.json()); // For parsing application/json
 app.use(express.urlencoded({ extended: true }));
 

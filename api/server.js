@@ -11,7 +11,6 @@ app.use(
         origin: ['http://localhost:3000', 'https://fire-recovery-monitoring.vercel.app'],
         methods: ['GET', 'POST', 'OPTIONS', 'DELETE'],
         allowedHeaders: ['Content-Type', 'Authorization'],
-        credentials: true, // Allow cookies or other credentials
     })
 );
 

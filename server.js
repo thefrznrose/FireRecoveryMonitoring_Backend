@@ -6,9 +6,6 @@ require('dotenv').config();
 
 const app = express();
 
-
-
-
 app.use(express.json()); // For parsing application/json
 app.use(express.urlencoded({ extended: true }));
 

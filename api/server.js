@@ -8,7 +8,6 @@ const app = express();
 app.use(
     cors({
       origin: ['http://localhost:3000', 'https://fire-recovery-monitoring.vercel.app'],
-      credentials: true,
     })
   );
   
@@ -26,6 +25,14 @@ const dbConfig = {
     port: process.env.DB_PORT || 3306,
 };
 
+app.use((req, res, next) => {
+    console.log(`Incoming request: ${req.method} ${req.url}`);
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,DELETE');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    next();
+  });
+  
 
 
 // Multer configuration for handling file uploads (image stored in memory)

@@ -1,7 +1,7 @@
 const express = require('express');
 const mysql = require('mysql2/promise');
 const multer = require('multer');
-// const cors = require('cors');
+const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
@@ -21,6 +21,8 @@ const app = express();
 app.use(express.json()); // For parsing application/json
 app.use(express.urlencoded({ extended: true }));
 
+const cors = require('cors');
+app.use(cors({ origin: '*' })); // Adjust origin for production
 
 
 // MySQL connection details from environment variables

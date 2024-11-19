@@ -66,9 +66,42 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 const port = process.env.PORT || 3000; // Default to 3000 for local testing
 
+app.get('/images/full/:id', async (req, res) => {
+    const { id } = req.params;
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+    try {
+        // Connect to MySQL
+        const connection = await mysql.createConnection(dbConfig);
+
+        // Fetch the full-resolution image by ID
+        const [rows] = await connection.execute(
+            `
+            SELECT image_data, image_width, image_height, image_location
+            FROM Images
+            WHERE image_id = ?
+            `,
+            [id]
+        );
+
+        await connection.end();
+
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'Image not found' });
+        }
+
+        const row = rows[0];
+        res.status(200).json({
+            image: Buffer.from(row.image_data).toString('base64'), // Convert image data to base64
+            width: row.image_width,
+            height: row.image_height,
+            location: row.image_location,
+        });
+    } catch (error) {
+        console.error('Error fetching full-resolution image:', error);
+        res.status(500).json({ message: 'Error fetching image', error });
+    }
+});
+
 
 // Route to handle image upload
 app.post('/upload', upload.single('image'), async (req, res) => {
@@ -120,40 +153,69 @@ app.post('/upload', upload.single('image'), async (req, res) => {
     }
 });
 
+const sharp = require('sharp');
 
-
-// Route to fetch all images
+// Updated route to fetch images with pagination
 app.get('/images', async (req, res) => {
+    const page = parseInt(req.query.page) || 1; // Default to 1 if not provided
+    const pageSize = parseInt(req.query.pageSize) || 12; // Default to 10 if not provided
+    const targetWidth = parseInt(req.query.width) || 300; // Target width for resized images (default: 300px)
+    const targetHeight = parseInt(req.query.height) || 300; // Target height for resized images (default: 300px)
+
+    if (isNaN(page) || isNaN(pageSize) || page < 1 || pageSize < 1) {
+        return res.status(400).json({ message: 'Invalid pagination parameters' });
+    }
+
+    const offset = (page - 1) * pageSize; // Calculate the offset
+
     try {
-        // Connect to MySQL
         const connection = await mysql.createConnection(dbConfig);
 
-        // Fetch all image records from the Images table
-        const [rows] = await connection.execute(`
+        // Fetch paginated images from the database
+        const [rows] = await connection.execute(
+            `
             SELECT image_id, image_data, image_datetime, image_width, image_height, image_location
             FROM Images
-        `);
-
+            LIMIT ? OFFSET ?
+            `,
+            [String(pageSize), String(offset)]
+        );
 
         await connection.end();
 
-        // Transform the image data (convert BLOB to base64)
-        const images = rows.map((row) => ({
-            id: row.image_id,
-            image: Buffer.from(row.image_data).toString('base64'),
-            datetime: row.image_datetime,
-            width: row.image_width,
-            height: row.image_height,
-            location: row.image_location, // Include location in the response
-        }));
-        
-        // Respond with the image array
+        // Resize and encode images
+        const images = await Promise.all(
+            rows.map(async (row) => {
+                let resizedImageBuffer;
+                try {
+                    // Resize the image using sharp
+                    resizedImageBuffer = await sharp(Buffer.from(row.image_data))
+                        .resize(targetWidth, targetHeight, { fit: 'inside' }) // Maintain aspect ratio
+                        .toBuffer();
+                } catch (error) {
+                    console.error(`Error resizing image ID ${row.image_id}:`, error);
+                    resizedImageBuffer = Buffer.from(row.image_data); // Fallback to original image
+                }
+
+                return {
+                    id: row.image_id,
+                    image: resizedImageBuffer.toString('base64'), // Convert resized image to base64
+                    datetime: row.image_datetime,
+                    width: targetWidth,
+                    height: targetHeight,
+                    location: row.image_location,
+                };
+            })
+        );
+
         res.status(200).json(images);
     } catch (error) {
         console.error('Error fetching images:', error);
         res.status(500).json({ message: 'Error fetching images', error });
     }
 });
+
+
 
 
 // Route to delete an image by ID

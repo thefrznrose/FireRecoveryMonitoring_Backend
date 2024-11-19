@@ -117,40 +117,50 @@ app.post('/upload', upload.single('image'), async (req, res) => {
     }
 });
 
+const sharp = require('sharp');
 
-
-// Route to fetch all images
+// Updated route to fetch images with pagination
 app.get('/images', async (req, res) => {
+    const page = parseInt(req.query.page) || 1; // Default to page 1 if not provided
+    const pageSize = parseInt(req.query.pageSize) || 10; // Default to 10 items per page
+
+    if (isNaN(page) || isNaN(pageSize) || page < 1 || pageSize < 1) {
+        return res.status(400).json({ message: 'Invalid pagination parameters' });
+    }
+
+    const offset = (page - 1) * pageSize;
+
     try {
         // Connect to MySQL
         const connection = await mysql.createConnection(dbConfig);
 
-        // Fetch all image records from the Images table
-        const [rows] = await connection.execute(`
+        // Fetch paginated image records
+        const [rows] = await connection.execute(
+            `
             SELECT image_id, image_data, image_datetime, image_width, image_height, image_location
             FROM Images
-        `);
-
+            LIMIT ? OFFSET ?
+            `,
+            [pageSize, offset] // Pass integers to the query
+        );
 
         await connection.end();
 
-        // Transform the image data (convert BLOB to base64)
-        const images = rows.map((row) => ({
+        // Respond with the fetched rows
+        res.status(200).json(rows.map((row) => ({
             id: row.image_id,
-            image: Buffer.from(row.image_data).toString('base64'),
+            image: Buffer.from(row.image_data).toString('base64'), // Convert image data to base64
             datetime: row.image_datetime,
             width: row.image_width,
             height: row.image_height,
-            location: row.image_location, // Include location in the response
-        }));
-        
-        // Respond with the image array
-        res.status(200).json(images);
+            location: row.image_location,
+        })));
     } catch (error) {
         console.error('Error fetching images:', error);
         res.status(500).json({ message: 'Error fetching images', error });
     }
 });
+
 
 
 // Route to delete an image by ID

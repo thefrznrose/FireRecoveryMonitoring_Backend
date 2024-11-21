@@ -1,13 +1,7 @@
 # Environment files
 .env
 
-# Credentials and tokens
-.crudentials
-.tokens
-# Dependency files
-.node_modules
-.package-lock
-.yarn
+.json
 
 # Deployment files
-vercel.json
+.vercel

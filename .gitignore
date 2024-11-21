@@ -2,13 +2,12 @@
 .env
 
 # Credentials and tokens
-crudentials.json
-tokens.json
-
+.crudentials
+.tokens
 # Dependency files
-node_modules/
-package-lock.json
-yarn.lock
+.node_modules
+.package-lock
+.yarn
 
 # Deployment files
 vercel.json

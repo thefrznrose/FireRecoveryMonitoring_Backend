@@ -1,1 +1,14 @@
-.vercel
+# Environment files
+.env
+
+# Credentials and tokens
+crudentials.json
+tokens.json
+
+# Dependency files
+node_modules/
+package-lock.json
+yarn.lock
+
+# Deployment files
+vercel.json

@@ -2,32 +2,21 @@ const express = require('express');
 const mysql = require('mysql2/promise');
 const multer = require('multer');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
+const { google } = require('googleapis');
+const sharp = require('sharp');
 require('dotenv').config();
 
 const app = express();
+const port = process.env.PORT || 3000; // Default port
 
-app.use(express.json()); // For parsing application/json
-app.use(express.urlencoded({ extended: true }));
+/** Middlewares */
+app.use(express.json()); // Parse application/json
+app.use(express.urlencoded({ extended: true })); // Parse application/x-www-form-urlencoded
+app.use(cors()); // Enable CORS
 
-app.use(cors());
-
-// sample api routes for testing
-app.get('/', (req, res) => {
-    res.json("welcome to our server")
-});
-
-// app.use(
-//     cors({
-//         Ac: [
-//             'http://localhost:3000',
-//             'http://localhost:3001', 
-//             'https://fire-recovery-monitoring.vercel.app'],
-//         methods: ['GET', 'POST', 'OPTIONS', 'DELETE'],
-//         allowedHeaders: ['Content-Type', 'Authorization'],
-//     })
-// );
-
-// MySQL connection details from environment variables
+/** MySQL Configuration */
 const dbConfig = {
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -36,109 +25,115 @@ const dbConfig = {
     port: process.env.DB_PORT || 3306,
 };
 
-// app.options('*', (req, res) => {
-//     res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
-//     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,DELETE');
-//     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-//     res.setHeader('Access-Control-Allow-Credentials', 'true');
-//     res.sendStatus(204); // No content
-// });
+/** Google API Configuration */
+const CREDENTIALS = JSON.parse(fs.readFileSync('crudentials.json', 'utf-8'));
+const { client_id, client_secret, redirect_uris } = CREDENTIALS.web;
 
+const oauth2Client = new google.auth.OAuth2(
+    client_id,
+    client_secret,
+    redirect_uris[0]
+);
 
-// app.use((req, res, next) => {
-//     console.log(`Incoming request: ${req.method} ${req.url}`);
-//     res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
-//     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,DELETE');
-//     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-//     next();
-//   });
-  
-// app.use((req, res, next) => {
-//     console.log(`Incoming request: ${req.method} ${req.url}`);
-//     console.log(`Headers: ${JSON.stringify(req.headers)}`);
-//     console.log(`Body: ${JSON.stringify(req.body)}`);
-//     next();
-// });
+const SCOPES = ['https://www.googleapis.com/auth/drive.file'];
+const authUrl = oauth2Client.generateAuthUrl({
+    access_type: 'offline',
+    scope: SCOPES,
+});
+console.log('Authorize this app by visiting this URL:', authUrl);
 
-
-// Multer configuration for handling file uploads (image stored in memory)
-const storage = multer.memoryStorage();
+/** Multer Configuration for File Uploads */
+const storage = multer.memoryStorage(); // Store files in memory
 const upload = multer({ storage: storage });
-const port = process.env.PORT || 3000; // Default to 3000 for local testing
 
-app.get('/images/full/:id', async (req, res) => {
-    const { id } = req.params;
+/** Routes */
 
+// Test Route
+app.get('/', (req, res) => {
+    res.json('Welcome to our server!');
+});
+
+/** Google Drive API Routes */
+const TOKEN_PATH = 'tokens.json';
+
+app.get('/auth', async (req, res) => {
+    const { code } = req.query;
     try {
-        // Connect to MySQL
-        const connection = await mysql.createConnection(dbConfig);
+        const { tokens } = await oauth2Client.getToken(code);
+        oauth2Client.setCredentials(tokens);
 
-        // Fetch the full-resolution image by ID
-        const [rows] = await connection.execute(
-            `
-            SELECT image_data, image_width, image_height, image_location
-            FROM Images
-            WHERE image_id = ?
-            `,
-            [id]
-        );
+        // Save tokens to a file
+        fs.writeFileSync(TOKEN_PATH, JSON.stringify(tokens));
+        console.log('Tokens saved to', TOKEN_PATH);
 
-        await connection.end();
-
-        if (rows.length === 0) {
-            return res.status(404).json({ message: 'Image not found' });
-        }
-
-        const row = rows[0];
-        res.status(200).json({
-            image: Buffer.from(row.image_data).toString('base64'), // Convert image data to base64
-            width: row.image_width,
-            height: row.image_height,
-            location: row.image_location,
-        });
+        res.status(200).send('Authentication successful!');
     } catch (error) {
-        console.error('Error fetching full-resolution image:', error);
-        res.status(500).json({ message: 'Error fetching image', error });
+        console.error('Error authenticating:', error);
+        res.status(500).send('Failed to authenticate.');
     }
 });
 
 
-// Route to handle image upload
+// Upload File to Google Drive
+app.post('/upload-drive', upload.single('image'), async (req, res) => {
+    const file = req.file;
+    if (!file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+    }
+    const drive = google.drive({ version: 'v3', auth: oauth2Client });
+    try {
+        const response = await drive.files.create({
+            requestBody: {
+                name: file.originalname,
+                mimeType: file.mimetype,
+                parents: ['1XhnZW68-g4hKw-8rg-BrxahbnmZwZYx4'], // Replace with your folder ID
+            },
+            media: {
+                mimeType: file.mimetype,
+                body: Buffer.from(file.buffer), // Use the in-memory buffer
+            },
+        });
+        // Set permissions for public access
+        await drive.permissions.create({
+            fileId: response.data.id,
+            requestBody: {
+                role: 'reader',
+                type: 'anyone',
+            },
+        });
+        const fileUrl = `https://drive.google.com/uc?id=${response.data.id}`;
+        res.status(200).json({
+            message: 'File uploaded to Google Drive successfully',
+            fileId: response.data.id,
+            fileUrl,
+        });
+    } catch (error) {
+        console.error('Error uploading to Google Drive:', error);
+        res.status(500).json({ message: 'Failed to upload file to Google Drive', error });
+    }
+});
+
+/** Image Management Routes */
+
+// Upload Image to MySQL Database
 app.post('/upload', upload.single('image'), async (req, res) => {
     const file = req.file;
     const { width, height, location } = req.body;
 
-    // Validate request
-    if (!file) {
-        return res.status(400).json({ message: 'No image file uploaded' });
-    }
-
-    if (!width || !height) {
-        return res.status(400).json({ message: 'Image width and height are required' });
-    }
-
-    if (!location) {
-        return res.status(400).json({ message: 'Location is required' });
+    if (!file || !width || !height || !location) {
+        return res.status(400).json({ message: 'Invalid input data' });
     }
 
     try {
-        // Decode image from file buffer
         const buffer = file.buffer;
-
-        // Connect to MySQL
         const connection = await mysql.createConnection(dbConfig);
-
-        // Insert image into the database
         const query = `
-            INSERT INTO Images (image_data, image_datetime, image_width, image_height, image_location) 
+            INSERT INTO Images (image_data, image_dateTime, image_width, image_height, image_location)
             VALUES (?, NOW(), ?, ?, ?)
         `;
         const [result] = await connection.execute(query, [buffer, width, height, location]);
-
-        // Close the connection
         await connection.end();
 
-        // Respond with success
         res.status(200).json({
             message: 'Image uploaded successfully',
             imageId: result.insertId,
@@ -146,60 +141,45 @@ app.post('/upload', upload.single('image'), async (req, res) => {
         });
     } catch (error) {
         console.error('Error uploading image:', error);
-        res.status(500).json({
-            message: 'Error uploading image',
-            error: error.message || error,
-        });
+        res.status(500).json({ message: 'Error uploading image', error });
     }
 });
 
-const sharp = require('sharp');
-
-// Updated route to fetch images with pagination
+// Fetch Images with Pagination
 app.get('/images', async (req, res) => {
-    const page = parseInt(req.query.page) || 1; // Default to 1 if not provided
-    const pageSize = parseInt(req.query.pageSize) || 12; // Default to 10 if not provided
-    const targetWidth = parseInt(req.query.width) || 300; // Target width for resized images (default: 300px)
-    const targetHeight = parseInt(req.query.height) || 300; // Target height for resized images (default: 300px)
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = parseInt(req.query.pageSize) || 12;
+    const targetWidth = parseInt(req.query.width) || 300;
+    const targetHeight = parseInt(req.query.height) || 300;
 
     if (isNaN(page) || isNaN(pageSize) || page < 1 || pageSize < 1) {
         return res.status(400).json({ message: 'Invalid pagination parameters' });
     }
 
-    const offset = (page - 1) * pageSize; // Calculate the offset
+    const offset = (page - 1) * pageSize;
 
     try {
         const connection = await mysql.createConnection(dbConfig);
-
-        // Fetch paginated images from the database
         const [rows] = await connection.execute(
-            `
-            SELECT image_id, image_data, image_datetime, image_width, image_height, image_location
-            FROM Images
-            LIMIT ? OFFSET ?
-            `,
+            `SELECT image_id, image_data, image_datetime, image_width, image_height, image_location FROM Images LIMIT ? OFFSET ?`,
             [String(pageSize), String(offset)]
         );
-
         await connection.end();
 
-        // Resize and encode images
         const images = await Promise.all(
             rows.map(async (row) => {
                 let resizedImageBuffer;
                 try {
-                    // Resize the image using sharp
                     resizedImageBuffer = await sharp(Buffer.from(row.image_data))
-                        .resize(targetWidth, targetHeight, { fit: 'inside' }) // Maintain aspect ratio
+                        .resize(targetWidth, targetHeight, { fit: 'inside' })
                         .toBuffer();
                 } catch (error) {
-                    console.error(`Error resizing image ID ${row.image_id}:`, error);
-                    resizedImageBuffer = Buffer.from(row.image_data); // Fallback to original image
+                    resizedImageBuffer = Buffer.from(row.image_data);
                 }
 
                 return {
                     id: row.image_id,
-                    image: resizedImageBuffer.toString('base64'), // Convert resized image to base64
+                    image: resizedImageBuffer.toString('base64'),
                     datetime: row.image_datetime,
                     width: targetWidth,
                     height: targetHeight,
@@ -215,29 +195,20 @@ app.get('/images', async (req, res) => {
     }
 });
 
-
-
-
-// Route to delete an image by ID
+// Delete Image by ID
 app.delete('/images/:id', async (req, res) => {
     const { id } = req.params;
 
     try {
-        // Connect to MySQL
         const connection = await mysql.createConnection(dbConfig);
-
-        // Delete the image from the Images table
         const query = `DELETE FROM Images WHERE image_id = ?`;
         const [result] = await connection.execute(query, [id]);
-
         await connection.end();
 
-        // Check if the image was successfully deleted
         if (result.affectedRows === 0) {
             return res.status(404).json({ message: 'Image not found' });
         }
 
-        // Respond with success
         res.status(200).json({ message: 'Image deleted successfully' });
     } catch (error) {
         console.error('Error deleting image:', error);
@@ -245,7 +216,7 @@ app.delete('/images/:id', async (req, res) => {
     }
 });
 
-// Start the Express server
+/** Start Server */
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });

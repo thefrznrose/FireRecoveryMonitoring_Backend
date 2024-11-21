@@ -6,7 +6,7 @@
   "main": "api/server.js",
   "scripts": {
     "start": "node api/server.js",
-    "vercel-build": "echo 'Vercel Build Step'"
+    "vercel-build": "echo 'Vercel Build Step'",
     "start": "node api/server.js",
     "vercel-build": "echo 'Vercel Build Step'"
   },

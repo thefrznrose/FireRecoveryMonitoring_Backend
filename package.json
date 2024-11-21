@@ -1,8 +1,12 @@
 {
   "name": "fire-recovery-monitoring-backend",
+  "name": "fire-recovery-monitoring-backend",
   "version": "1.0.0",
   "main": "api/server.js",
+  "main": "api/server.js",
   "scripts": {
+    "start": "node api/server.js",
+    "vercel-build": "echo 'Vercel Build Step'"
     "start": "node api/server.js",
     "vercel-build": "echo 'Vercel Build Step'"
   },
